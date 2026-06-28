@@ -182,3 +182,50 @@
 | Stripe integration | P2 | Checkout + webhooks |
 | Background music para Remotion | P2 | Pixabay música gratuita |
 | VPS deploy | P2 | Hetzner CX22, nginx + systemd |
+
+---
+
+## Session 2026-06-28 — Bug Fixes + UX Sprint (HAOS delegation)
+
+**Agent:** Hermes (orchestrator) + CodeWhale (P0-A, P0-B, P1-A, P1-B executor) + CodeWhale (auditor)
+
+### Methodology
+First full HAOS delegation cycle:
+1. Hermes: wrote specs in tasks.md with acceptance criteria
+2. CodeWhale: implemented 4 tasks in parallel batches
+3. CodeWhale: auditing all changes (in progress)
+4. Hermes: validating outputs, updating HAOS
+
+### Batch 1 — P0 Fixes (parallel)
+| Task | Agent | Status | Notes |
+|---|---|---|---|
+| P0-A: Fix video player + VideoDetailClient | CodeWhale | ✅ Done | Fixed broken video source (was string-replace on thumbnail URL), added downloadUrl state, metadata field alignment (duration_s, style_playbook, platform_profile) |
+| P0-B: Dashboard bugs + jobs feed | CodeWhale | ✅ Done | tierUsed from /api/me, doneCount uses real value, processing jobs in gallery, settings shows real count, polling at 3s |
+
+### Batch 2 — P1 Features (parallel)
+| Task | Agent | Status | Notes |
+|---|---|---|---|
+| P1-A: Per-scene progress in pipeline | CodeWhale | ✅ Done | images.py + tts.py changed from asyncio.gather to sequential loop with progress_callback. Engine interpolates progress within stage ranges: Images 1/3→46%, 2/3→53%, 3/3→60% |
+| P1-B: Landing page redirect | CodeWhale | ✅ Done | Logged-in users redirected to /dashboard. Spinner during auth check, zero flicker. |
+
+### Files changed
+- 10 files: 3 backend (pipeline), 7 frontend (pages, components, types)
+- 169 insertions, 77 deletions
+- TypeScript: 0 errors
+- Build: clean
+
+### Test Results
+- Pipeline e2e: ✅ Completed (per-scene progress verified)
+- Frontend build: ✅ 0 errors
+- Backend imports: ✅ All modules load
+
+### Audit
+| Finding | Severity | Description | Status |
+|---|---|---|---|
+| Video model missing `status` field | HIGH | Backend Video model didn't include status; all videos showed "Generation failed" | ✅ Fixed (added status="done") |
+| Type narrowing in VideoDetailClient | LOW | TypeScript type guards for video states | ✅ Handled |
+| Pipeline fallback behavior | LOW | Silent WAV durations documented correctly | ✅ Documented |
+
+### Commit
+- `1e00152` — 12 files, +172/-78, pushed to Penhall/montage
+

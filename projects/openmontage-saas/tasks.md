@@ -1,171 +1,96 @@
 # Tasks — Montage
 
 **Date:** 2026-06-24 (updated 2026-06-28)
-**Agent Assignments:** Hermes (orchestrator), CodeWhale (executor), Codex (auditor)
+**Agent Assignments:** Hermes (orchestrator), CodeWhale (executor), Codex (auditor), Claude Code (complex)
 
 ---
 
-## Epic 1: Project Setup
+## Sprint Atual: Bug Fixes + UX (2026-06-28)
 
-### T1.1 — Criar repositório e estrutura base ✅
-**Priority:** P0 | **Agent:** CodeWhale | **Commit:** 5a4d217
+### P0-A — Consertar player de vídeo + VideoDetailClient
 
-### T1.2 — Configurar Supabase project ❌ (substituído)
-**Priority:** P0 (was) | **Status:** Superseded by D001 (PostgreSQL local)
-**Nota:** Schema SQL migrado para PostgreSQL local. Supabase não é mais utilizado.
+**Priority:** P0 | **Agent:** CodeWhale | **Auditor:** Codex
+**Scope:** frontend only
+**Files:** `VideoDetailClient.tsx`, `api.ts`
 
-### T1.3 — Configurar Vercel project ❌ (removido)
-**Priority:** P0 (was) | **Status:** Removido (D005 — next start local)
-**Nota:** Vercel deploy testado, funcional, mas removido por decisão do usuário (foco local).
+**AC:**
+- Player de vídeo carrega o MP4 correto (usar `getVideoDownloadUrl(id)`)
+- Video source NÃO depende da existência de thumbnail
+- JobProgress recebe os 3 novos props (progressMessage, stageStartedAt, createdAt)
+- Estados cobertos: done (player visível), processing (JobProgress completo), failed (mensagem)
+- Thumbnail aparece como poster do player quando disponível
+- Download via `getVideoDownloadUrl` — não string replace
 
----
-
-## Epic 2: Backend Core
-
-### T2.1 — FastAPI app skeleton ✅
-**Priority:** P0 | **Agent:** CodeWhale | **Commit:** 5a4d217
-
-### T2.2 — Database migrations ✅
-**Priority:** P0 | **Agent:** Hermes
-**Nota:** Schema executado em PostgreSQL local (Docker). init.sql + migrations/001_initial.sql.
-
-### T2.3 — Jobs API endpoints ✅
-**Priority:** P0 | **Agent:** CodeWhale | **Commit:** 5a4d217
-
-### T2.4 — Videos API endpoints ✅
-**Priority:** P0 | **Agent:** CodeWhale | **Commit:** 5a4d217
-
-### T2.5 — Tier management ✅
-**Priority:** P0 | **Agent:** CodeWhale | **Commit:** 5a4d217
+**Contexto técnico:**
+- Backend retorna `/api/videos/{id}/download` → FileResponse com o MP4
+- Backend retorna `/api/videos/{id}/thumbnail` → FileResponse com JPEG
+- `getVideoDownloadUrl(id)` já existe em `api.ts` e funciona
+- `getVideo(id)` retorna `Video` com campos `thumbnail_url` (string URL), `download_url` (já incluso na resposta mas não no tipo)
+- Atualizar interface `Video` em `api.ts` para incluir `download_url: string`
 
 ---
 
-## Epic 3: Pipeline Engine
+### P0-B — Dashboard bugs (tierUsed, doneCount, jobs visíveis)
 
-### T3.1 — Pipeline orchestrator ✅
-**Priority:** P0 | **Agent:** CodeWhale + Hermes | **Commit:** 5a4d217, 61ecf92
-**Nota:** Refatorado em 2026-06-28 para progress tracking granular.
+**Priority:** P0 | **Agent:** CodeWhale | **Auditor:** Codex
+**Scope:** frontend only
+**Files:** `dashboard/page.tsx`, `settings/page.tsx`, `api.ts`
 
-### T3.2 — Research stage ✅
-**Priority:** P0 | **Agent:** CodeWhale | **Commit:** 5a4d217
+**AC:**
+- `tierUsed` usa `videos_this_month` do `/api/me` (não 0 hardcoded)
+- `doneCount` conta corretamente vídeos do mês (via `/api/me`)
+- Settings page mostra o valor real de `videos_this_month`
+- Rate limiting usa o valor real (não `allItems.length`)
+- Jobs em processamento aparecem na galeria como cards com JobProgress
+- Polling unificado: jobs em processamento + vídeos, a cada 3s
 
-### T3.3 — Script generation ✅
-**Priority:** P0 | **Agent:** CodeWhale | **Commit:** 5a4d217
-
-### T3.4 — Image gathering ✅
-**Priority:** P0 | **Agent:** CodeWhale | **Commit:** 5a4d217
-
-### T3.5 — TTS stage ✅
-**Priority:** P0 | **Agent:** CodeWhale | **Commit:** 5a4d217
-
-### T3.6 — Remotion render stage ✅
-**Priority:** P0 | **Agent:** CodeWhale + Hermes | **Commit:** d54ff3a
-**Nota:** Diversos bugs corrigidos: zod 4.3.6, CTA condicional, staticFile, placeholder images.
-
-### T3.7 — Upload & finalize stage ✅
-**Priority:** P0 | **Agent:** CodeWhale + Hermes
-**Nota:** Adaptado para filesystem local (D003).
+**Contexto técnico:**
+- `/api/me` retorna `{videos_this_month: int, tier: string, videos_limit: int}`
+- `/api/jobs` retorna `[{id, status, progress, progress_message, stage_started_at, title, created_at}]`
+- `/api/videos` retorna `[{id, title, status, thumbnail_url, duration_s, created_at, download_url}]`
+- Dashboard atual só chama `getVideos()`, nunca `getJobs()`
+- `tierUsed` state existe mas nunca é atualizado no modo web
+- Settings page linha 24: `setUsed(0)` — precisa buscar de `/api/me`
 
 ---
 
-## Epic 4: Frontend Core
+### P1-A — Progresso per-scene no pipeline
 
-### T4.1 — Next.js app setup ✅
-**Priority:** P0 | **Agent:** CodeWhale | **Commit:** 5a4d217
+**Priority:** P1 | **Agent:** CodeWhale | **Auditor:** Codex
+**Scope:** backend only
+**Files:** `pipeline/engine.py`, `pipeline/images.py`, `pipeline/tts.py`
 
-### T4.2 — Auth integration ✅
-**Priority:** P0 | **Agent:** CodeWhale | **Commit:** 6b90996
-**Nota:** Migrado de Supabase Auth para JWT local. 46 referências substituídas.
+**AC:**
+- Durante estágio de imagens, progresso atualiza após cada imagem baixada
+- Durante estágio de TTS, progresso atualiza após cada arquivo de áudio gerado
+- Progresso interpolado dentro do range do estágio (ex: images 40-60%, 5 cenas → 40→44→48→52→56→60)
+- progress_message atualiza: "Images: 1/5", "Images: 2/5", etc.
+- Estágio de render mantém progresso atual (não tem como granularizar Remotion subprocess)
 
-### T4.3 — Landing page ✅
-**Priority:** P0 | **Agent:** CodeWhale | **Commit:** 5a4d217
-
-### T4.4 — Dashboard page ✅
-**Priority:** P0 | **Agent:** CodeWhale + Hermes | **Commit:** 61ecf92
-**Nota:** ProgressOverlay adicionado em 2026-06-28 para tracking em tempo real.
-
-### T4.5 — Video detail page ✅
-**Priority:** P1 | **Agent:** CodeWhale + Hermes | **Commit:** d54ff3a
-**Nota:** dynamicParams corrigido para true; status "done" adicionado.
-
-### T4.6 — Settings page ✅
-**Priority:** P1 | **Agent:** CodeWhale | **Commit:** 5a4d217
-
----
-
-## Epic 5: Payment & Tiers
-
-### T5.1 — Stripe integration 🔄
-**Priority:** P1 | **Status:** Estrutura existe (rotas, modelos), não testada
-**Próximo:** Configurar Stripe test mode, testar checkout flow
-
-### T5.2 — Watermark system 🔄
-**Priority:** P1 | **Status:** Parcial — Remotion tem estrutura para overlay, não testado por tier
-**Próximo:** Condicionar watermark ao tier do usuário
+**Contexto técnico:**
+- images.py usa `asyncio.gather` para baixar todas imagens em paralelo
+- TTS.py também usa `asyncio.gather`
+- Para granularizar, trocar `asyncio.gather` por loop sequencial com callback
+- engine.py já tem `_set_progress_msg()` que atualiza progress + message
+- engine.py precisa passar um callback `progress_callback(scene_index, total)` para images.py e tts.py
+- Ranges: IMAGES_RANGE (40, 60), TTS_RANGE (60, 75)
+- Fórmula de interpolação: `range_start + (scene_index / total_scenes) * (range_end - range_start)`
 
 ---
 
-## Epic 6: VPS Provisioning & Deploy
+### P1-B — Landing page: redirect logged-in users
 
-### T6.1 — VPS setup script ⬜
-**Priority:** P2 | **Status:** Não iniciado (foco local)
+**Priority:** P1 | **Agent:** Codex | **Auditor:** CodeWhale
+**Scope:** frontend only
+**Files:** `app/page.tsx`
 
-### T6.2 — Backend deploy ⬜
-**Priority:** P2 | **Status:** Não iniciado
+**AC:**
+- Usuário logado que acessa `/` é redirecionado para `/dashboard`
+- Usuário não logado vê a landing page normal
+- Nav bar mostra "Dashboard" em vez de "Sign in" para logged-in
+- Sem flicker — verificar auth antes de renderizar
 
-### T6.3 — Frontend deploy ⬜
-**Priority:** P2 | **Status:** Não iniciado
-
----
-
-## Epic 7: Polish & Launch
-
-### T7.1 — Error handling & edge cases 🔄
-**Priority:** P1 | **Status:** Parcial — auth errors, rate limit, connection lost cobertos
-**Próximo:** Retry automático, timeout handling no pipeline
-
-### T7.2 — SEO & meta tags ⬜
-**Priority:** P2 | **Status:** Não iniciado
-
-### T7.3 — Analytics ⬜
-**Priority:** P2 | **Status:** Não iniciado
-
----
-
-## Novas Tasks (pós-MVP)
-
-### T8.1 — Configurar API keys reais
-**Priority:** P0 | **Agent:** Hermes
-**AC:** DEEPSEEK_API_KEY, PEXELS_API_KEY configurados no .env. Pipeline gera conteúdo real.
-**Subtasks:**
-- Obter/verificar DEEPSEEK_API_KEY
-- Obter/verificar PEXELS_API_KEY (gratuita, 200 req/h)
-- Testar pipeline com keys reais (script com IA, imagens reais)
-
-### T8.2 — Progresso intra-estágio (per-scene)
-**Priority:** P1 | **Agent:** CodeWhale
-**AC:** Durante images/TTS, progresso atualiza a cada cena processada, não só no final.
-**Subtasks:**
-- images.py: callback de progresso após cada download
-- tts.py: callback após cada arquivo gerado
-- engine.py: interpolar progresso dentro do range do estágio
-
-### T8.3 — Upload de assets customizados
-**Priority:** P1 | **Agent:** CodeWhale
-**AC:** Usuário pode fazer upload de imagens/áudio próprios para usar no vídeo.
-**Subtasks:**
-- Frontend: componente de upload (drag & drop)
-- Backend: endpoint POST /api/assets (já existe estrutura)
-- Pipeline: usar assets do usuário em vez de search
-
-### T8.4 — Tauri desktop: conectar ao PostgreSQL ou SQLite
-**Priority:** P1 | **Agent:** Hermes
-**AC:** App desktop Tauri funcional com autenticação.
-**Alternativas:**
-- Conectar ao mesmo PostgreSQL local (reutilizar backend)
-- SQLite local com schema espelhado (offline-first)
-**Decisão pendente (ver D009)**
-
-### T8.5 — Background music para Remotion
-**Priority:** P2 | **Agent:** CodeWhale
-**AC:** Trilha sonora de fundo nos vídeos (Pixabay música gratuita).
+**Contexto técnico:**
+- `getUser()` de `@/lib/auth-client` retorna `null` se não logado
+- Usar `useEffect` + `useRouter` para redirect
+- Adicionar estado de loading enquanto verifica auth
