@@ -39,7 +39,47 @@
 - `/root/montage/docker/compose.yaml`
 - `/root/montage/backend/.env`
 
+## Agent Delegation Rules (mandatory)
+
+**Regra de ouro:** Hermes (DeepSeek V4 Pro, caro) NÃO implementa features. Hermes orquestra.
+Feature → delegar. Integração/debug/arquitetura → Hermes.
+
+### Matriz de delegação
+
+| Tipo de tarefa | Executor | Custo estimado | Auditor | Quando |
+|---|---|---|---|---|
+| **Feature multi-arquivo** (>3 arquivos) | CodeWhale | ~$0.02-0.05 | Codex | Sempre que escopos disjuntos |
+| **Feature isolada** (≤3 arquivos) | Codex | ~$0.05-0.15 | CodeWhale | Tarefa bem especificada |
+| **Correção cirúrgica** | Codex | ~$0.05-0.15 | Hermes | ≤2 arquivos, bug bem definido |
+| **Refatoração paralelizável** | CodeWhale (batch) | ~$0.05-0.10 | Codex | Escopos disjuntos em paralelo |
+| **Auditoria de segurança** | Codex | ~$0.05-0.15 | Hermes | Command-oriented (grep, lint, build) |
+| **Auditoria E2E/specs** | Hermes ou Claude Code | ~$0.70-1.10 | N/A | Codex trava em cross-reference |
+| **Integração entre subsistemas** | Hermes | DeepSeek V4 Pro | Codex pós-integração | Contexto complexo |
+| **Decisão de arquitetura** | Hermes | DeepSeek V4 Pro | HAOS decisions.md | Sempre |
+
+### Ciclo de implementação padrão
+
+```
+1. Hermes: especifica tarefa no tasks.md (acceptance criteria)
+2. CodeWhale ou Codex: implementa
+3. Codex ou CodeWhale (oposto ao executor): audita
+4. Hermes: valida output, testa e2e, atualiza HAOS, commit
+```
+
+### Restrições de toolsets
+
+| Função | Toolsets | Justificativa |
+|---|---|---|
+| Executor | terminal, file, web | Precisa instalar deps, buscar docs |
+| Auditor | terminal, file | Sem web — não deve buscar soluções externas |
+| Hermes | Todos | Orquestrador precisa de contexto completo |
+
+**Nunca:** dar `skills` toolset a subagentes. **Nunca:** `browser` + `terminal` juntos a subagentes.
+
+Reference: `safe-delegate` skill para padrões detalhados de delegação segura.
+
 ## Decisions Log
+
 - ✅ PostgreSQL local Docker substituiu Supabase (2026-06-26)
 - ✅ Auth local HS256 JWT + bcrypt substituiu Supabase Auth
 - ✅ is_admin flag nos usuários

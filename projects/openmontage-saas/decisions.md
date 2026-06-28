@@ -140,3 +140,24 @@ Decisões de arquitetura e design tomadas durante o desenvolvimento.
 - ✅ Performance de produção durante desenvolvimento
 - ❌ Sem hot reload (precisa rebuild a cada alteração no frontend)
 **Review:** Aceitável para fase atual. Para desenvolvimento intenso de UI, voltar para dev mode localmente.
+
+---
+
+## D009 — Delegação obrigatória de implementação para agentes especializados
+
+**Data:** 2026-06-28
+**Contexto:** Análise revelou que Hermes (DeepSeek V4 Pro, modelo mais caro) estava implementando features diretamente, enquanto CodeWhale (DeepSeek V4, mais barato) e Codex (o4-mini) ficavam ociosos. Auditoria via Codex nunca foi usada.
+**Alternativas:**
+- Continuar com Hermes implementando tudo (custo alto, sem auditoria independente)
+- Delegar implementação para CodeWhale/Codex, auditoria para o oposto (custo menor, qualidade maior)
+**Decisão:** Regra mandatória no HAOS:
+- **Hermes NÃO implementa features.** Hermes orquestra, especifica, integra, debuga e valida.
+- **Features → CodeWhale** (multi-arquivo, paralelizável) **ou Codex** (isolada, cirúrgica)
+- **Auditoria → Codex** (command-oriented) **ou CodeWhale** (analysis-heavy)
+- **Todo ciclo termina com auditor independente antes do commit**
+**Consequências:**
+- ✅ Redução de custo por feature (CodeWhale ~$0.03 vs Hermes V4 Pro ~$0.50+)
+- ✅ Qualidade maior (auditor externo pega bugs que o executor não vê)
+- ✅ Hermes liberado para arquitetura e decisões (maior valor agregado)
+- ❌ Overhead de coordenação (spec + delegate + audit + validate)
+**Review:** Aplicar imediatamente. Revisar após 5 features para medir economia e qualidade.
