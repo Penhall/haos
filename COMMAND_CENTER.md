@@ -47,13 +47,14 @@ Feature → delegar. Integração/debug/arquitetura → Hermes.
 ### Matriz de delegação
 
 | Tipo de tarefa | Executor | Custo estimado | Auditor | Quando |
-|---|---|---|---|---|
-| **Feature multi-arquivo** (>3 arquivos) | CodeWhale | ~$0.02-0.05 | Codex | Sempre que escopos disjuntos |
+|---|---|---|---|---|---|
+| **Feature multi-arquivo** (>3 arquivos) | CodeWhale | ~$0.02-0.05 | Codex | Escopos disjuntos |
 | **Feature isolada** (≤3 arquivos) | Codex | ~$0.05-0.15 | CodeWhale | Tarefa bem especificada |
+| **Feature complexa** (>5 arquivos, acoplados) | Claude Code | ~$0.70-1.10 | Codex | Contexto multi-arquivo interdependente |
 | **Correção cirúrgica** | Codex | ~$0.05-0.15 | Hermes | ≤2 arquivos, bug bem definido |
 | **Refatoração paralelizável** | CodeWhale (batch) | ~$0.05-0.10 | Codex | Escopos disjuntos em paralelo |
 | **Auditoria de segurança** | Codex | ~$0.05-0.15 | Hermes | Command-oriented (grep, lint, build) |
-| **Auditoria E2E/specs** | Hermes ou Claude Code | ~$0.70-1.10 | N/A | Codex trava em cross-reference |
+| **Auditoria E2E/specs** | Claude Code | ~$0.70-1.10 | Hermes | Cross-reference de >20 arquivos |
 | **Integração entre subsistemas** | Hermes | DeepSeek V4 Pro | Codex pós-integração | Contexto complexo |
 | **Decisão de arquitetura** | Hermes | DeepSeek V4 Pro | HAOS decisions.md | Sempre |
 
@@ -77,6 +78,30 @@ Feature → delegar. Integração/debug/arquitetura → Hermes.
 **Nunca:** dar `skills` toolset a subagentes. **Nunca:** `browser` + `terminal` juntos a subagentes.
 
 Reference: `safe-delegate` skill para padrões detalhados de delegação segura.
+
+### Executores disponíveis
+
+| Executor | Comando | Modelo | Sub-agentes | Custo/tarefa | Melhor para |
+|---|---|---|---|---|---|
+| **CodeWhale** | `codewhale exec --auto` | DeepSeek V4 | Sim (até 20) | ~$0.02-0.05 | Multi-arquivo paralelizável |
+| **Codex** | `codex exec` | o4-mini | Não | ~$0.05-0.15 | Tarefa bounded, cirúrgica |
+| **Claude Code** | `claude -p '...' --allowedTools` | Sonnet/Haiku | Não | ~$0.70-1.10 | Complexidade multi-arquivo acoplado |
+| **Hermes** | Você | DeepSeek V4 Pro | Sim | N/A (orquestrador) | Arquitetura, debug, integração |
+
+### Cadeia de fallback
+
+```
+Feature multi-arquivo disjunto:     CodeWhale → Codex → Claude Code
+Feature isolada cirúrgica:          Codex → CodeWhale → Claude Code
+Feature complexa acoplada:          Claude Code (direto, sem fallback)
+Auditoria command-oriented:         Codex → CodeWhale
+Auditoria analysis-heavy:           Claude Code (direto, sem fallback)
+```
+
+**Claude Code** só é acionado quando CodeWhale e Codex não são adequados:
+- Feature com >5 arquivos interdependentes que não paralelizam
+- Auditoria de cross-reference (E2E specs × 20+ arquivos de código)
+- Refatoração arquitetural que exige raciocínio multi-arquivo simultâneo
 
 ## Decisions Log
 

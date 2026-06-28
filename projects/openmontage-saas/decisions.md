@@ -153,8 +153,10 @@ Decisões de arquitetura e design tomadas durante o desenvolvimento.
 **Decisão:** Regra mandatória no HAOS:
 - **Hermes NÃO implementa features.** Hermes orquestra, especifica, integra, debuga e valida.
 - **Features → CodeWhale** (multi-arquivo, paralelizável) **ou Codex** (isolada, cirúrgica)
-- **Auditoria → Codex** (command-oriented) **ou CodeWhale** (analysis-heavy)
+- **Features complexas acopladas → Claude Code** (>5 arquivos interdependentes, sem paralelismo possível)
+- **Auditoria → Codex** (command-oriented) **ou CodeWhale** (analysis-heavy) **ou Claude Code** (cross-reference E2E)
 - **Todo ciclo termina com auditor independente antes do commit**
+- **Cadeia de fallback:** CodeWhale → Codex → Claude Code (só aciona Claude quando os dois primeiros não servem)
 **Consequências:**
 - ✅ Redução de custo por feature (CodeWhale ~$0.03 vs Hermes V4 Pro ~$0.50+)
 - ✅ Qualidade maior (auditor externo pega bugs que o executor não vê)
